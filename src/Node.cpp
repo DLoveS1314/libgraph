@@ -1,9 +1,9 @@
-#include "Node.h"
-#include "Edge.h"
+#include "../include/Node.h"
+#include "../include/Edge.h"
 
 #include <sstream>
 #include <iomanip>
-#include <cctype> // für isalnum() (siehe http://www.cplusplus.com/reference/cctype/isalnum/?kw=isalnum)
+#include <cctype> // fï¿½r isalnum() (siehe http://www.cplusplus.com/reference/cctype/isalnum/?kw=isalnum)
 
 int Node::s_numInstances = 0;
 
