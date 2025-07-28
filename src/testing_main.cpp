@@ -1,13 +1,14 @@
 #include <iostream>
-
 #define TESTING
-
 #include "../include/Graph.h"
 #include "../include/SimpleEdge.h"
-
 #include <algorithm>
 #include <chrono>
-
+#include <string>
+#include <fstream>
+#include <sstream>
+#include "../include/GeoJSONGraphConverter.h"
+#include "../include/Graph.h"
 
 /*-----------------------------------------------------------------------------------------------*/
 
@@ -122,8 +123,57 @@ private:
 };
 
 
-/*-----------------------------------------------------------------------------------------------*/
 
+// 从文件读取GeoJSON数据的函数
+std::string readGeoJSONFromFile(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("无法打开文件: " + filename);
+    }
+    
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+void testGeoJSONConversion() {
+    try {
+        // 从文件读取GeoJSON数据
+        std::string geojsonData = readGeoJSONFromFile("data/sample_road_network.geojson");
+        
+        // 转换GeoJSON到图
+        Graph graph = GeoJSONGraphConverter::fromGeoJSON(geojsonData);
+
+        // 输出图信息
+        std::cout << "成功创建图结构:\n";
+        std::cout << "节点数量: " << graph.getNodes().size() << std::endl;
+
+        // 输出节点ID列表
+        std::cout << "节点ID列表:\n";
+        for (const auto* node : graph.getNodes()) {
+            std::cout << "- " << node->getId() << std::endl;
+        }
+
+        // 演示最短路径查询
+        if (graph.getNodes().size() >= 2) {
+            auto it = graph.getNodes().begin();
+            Node* startNode = *it;
+            std::advance(it, graph.getNodes().size() - 1);
+            Node* endNode = *it;
+
+            auto path = graph.findShortestPathDijkstra(*startNode, *endNode);
+            std::cout << \n从 "" << startNode->getId() << "" 到 "" << endNode->getId() << "" 的最短路径:\n";
+            for (const auto* edge : path) {
+                std::cout << "- 边权重: " << edge->getWeight() << "km\n";
+            }
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << "转换失败: " << e.what() << std::endl;
+        return 1;
+    }
+
+}
 int main2()
 {
     GraphTesting gt;
