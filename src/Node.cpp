@@ -30,6 +30,14 @@ Node::Node(std::string id) : m_id(id)
 
 //-------------------------------------------------------------------------------------------------
 
+Node::Node(std::string id, double lon, double lat) : m_id(id), m_lon(lon), m_lat(lat)
+{
+    s_numInstances += 1;
+}
+
+
+//-------------------------------------------------------------------------------------------------
+
 std::list<Node*> Node::getNeighbours(Direction direction)
 {
     std::list<Node*> ret;

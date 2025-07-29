@@ -11,7 +11,7 @@ file(GLOB SOURCES "./src/*.cpp")
 add_executable(geojson_converter_test ${SOURCES})
 
 # 包含头文件目录
-target_include_directories(geojson_converter_test PRIVATE "./include" "./thirdparty")
+target_include_directories(geojson_converter_test PRIVATE "./include" )
 
 # 链接数学库(Haversine公式需要)
 if(UNIX)
@@ -22,4 +22,6 @@ endif()
 if(WIN32)
     # 添加Windows特定编译选项
     target_compile_options(geojson_converter_test PRIVATE /EHsc)
+    # 添加宏定义
+    add_definitions(-DROUTING_KIT_NO_POSIX)
 endif()

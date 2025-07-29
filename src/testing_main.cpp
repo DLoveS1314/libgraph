@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #define TESTING
 #include "../include/Graph.h"
 #include "../include/SimpleEdge.h"
@@ -8,8 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include "../include/GeoJSONGraphConverter.h"
-#include "../include/Graph.h"
-
+#include "../include/Graph.h" 
 /*-----------------------------------------------------------------------------------------------*/
 
 template <class T>
@@ -135,45 +134,88 @@ std::string readGeoJSONFromFile(const std::string& filename) {
     buffer << file.rdbuf();
     return buffer.str();
 }
+int testLoadGraphFromJson()
+{
+    std::string outgraph_roadfile = "D:/ISCAS/WORK/16_518Code/libgraph/data/outgraph_roadfile.json";
+    Graph graph;
+    graph.loadFromJson(outgraph_roadfile);
+            // 输出图信息
+    std::cout << "节点数量: " << graph.getNodes().size() << std::endl;
 
-void testGeoJSONConversion() {
+    // 输出节点ID列表
+    //std::cout << "节点ID列表:\n";
+    //for (const auto* node : graph.getNodes()) {
+    //    std::cout << "- " << node->getId() << std::endl;
+    //}
+    // for (Node* pNode : graph.getNodes()) {
+    //     std::cout << "- " << pNode->getId() << " (" << pNode->getLon() << ", " << pNode->getLat() << ")\n";
+    // }
+    // 输出边信息·
+    std::cout << "边信息:\n";
+    std::cout << "边数量: " << graph.getEdges().size() << std::endl;
+    return 0;
+}
+int testGeoJSONConversion() {
     try {
+        std::string roadfile = "D:/ISCAS/WORK/16_518Code/libgraph/data/ty_road_wgs84.geojson";
+        std::string outgraph_roadfile = "D:/ISCAS/WORK/16_518Code/libgraph/data/graph_ty_road_wgs84.geojson";
+
         // 从文件读取GeoJSON数据
-        std::string geojsonData = readGeoJSONFromFile("data/sample_road_network.geojson");
-        
+        std::string geojsonData = readGeoJSONFromFile(roadfile);
+        Graph graph;
         // 转换GeoJSON到图
-        Graph graph = GeoJSONGraphConverter::fromGeoJSON(geojsonData);
+        GeoJSONGraphConverter::fromGeoJSON(graph,geojsonData);
 
         // 输出图信息
         std::cout << "成功创建图结构:\n";
         std::cout << "节点数量: " << graph.getNodes().size() << std::endl;
 
         // 输出节点ID列表
-        std::cout << "节点ID列表:\n";
-        for (const auto* node : graph.getNodes()) {
-            std::cout << "- " << node->getId() << std::endl;
-        }
+        //std::cout << "节点ID列表:\n";
+        //for (const auto* node : graph.getNodes()) {
+        //    std::cout << "- " << node->getId() << std::endl;
+        //}
+        // for (Node* pNode : graph.getNodes()) {
+        //     std::cout << "- " << pNode->getId() << " (" << pNode->getLon() << ", " << pNode->getLat() << ")\n";
+        // }
+        // 输出边信息·
+        std::cout << "边信息:\n";
+        std::cout << "边数量: " << graph.getEdges().size() << std::endl;
 
+        std::cout << "保存图结构......\n";
+
+        graph.saveAsJson("outgraph_roadfile.json");
+        // for (Edge* pEdge : graph.getEdges()) {
+        //     SimpleEdge* pMyEdge = dynamic_cast<SimpleEdge*>(pEdge);
+        //     if (pMyEdge != NULL) {
+        //         std::cout << "- 边权重: " << pMyEdge->getWeight() << "km\n";
+        //     }
+        // }
+
+        bool useV1 =true;
         // 演示最短路径查询
         if (graph.getNodes().size() >= 2) {
             auto it = graph.getNodes().begin();
             Node* startNode = *it;
-            std::advance(it, graph.getNodes().size() - 1);
+            std::advance(it, graph.getNodes().size() - 20);
             Node* endNode = *it;
 
-            auto path = graph.findShortestPathDijkstra(*startNode, *endNode);
-            std::cout << \n从 "" << startNode->getId() << "" 到 "" << endNode->getId() << "" 的最短路径:\n";
-            for (const auto* edge : path) {
-                std::cout << "- 边权重: " << edge->getWeight() << "km\n";
-            }
+            auto path = graph.findShortestPathDijkstra(*startNode, *endNode, useV1);
+            std::cout <<  "从" << startNode->getId() << "  到 " << endNode->getId() << "  的最短路径:\n";
+            // for (const auto* edge : path) {
+            //     std::cout << "- 边权重: " << edge->getWeight() << "km\n";
+            //     std::cout  << "- 边名: "<< edge->toString() << std::endl;
+            // }
         }
-
+        return 0;
     } catch (const std::exception& e) {
         std::cerr << "转换失败: " << e.what() << std::endl;
         return 1;
     }
 
 }
+
+
 int main2()
 {
     GraphTesting gt;
@@ -190,6 +232,7 @@ int main2()
 
 int main1()
 {
+    Graph g;
   // You can subclass Node, in order to add functionallity to the nodes.
   Node& rMunich = g.makeNode(Node("Munich"));
   Node& rHamburg = g.makeNode<Node>("Hamburg");
@@ -219,8 +262,9 @@ int main()
 {
     // Uncomment the following line to run the testing main
     // return main2();
-
+    testGeoJSONConversion();
+    // testLoadGraphFromJson();
     // Otherwise, run the example main
-    return main1();
+    // return main1();
 }
 /*-----------------------------------------------------------------------------------------------*/

@@ -1,99 +1,111 @@
-#include "../include/GeoJSONGraphConverter.h"
+﻿#include "GeoJSONGraphConverter.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <cmath>
-#include <unordered_map>
-#include "../include/Node.h"
-#include "../include/SimpleEdge.h"
+#include "Graph.h"
+#include "Node.h"
+#include "SimpleEdge.h"
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+using json = nlohmann::json;
 
-// 地球半径(公里)
-const double EARTH_RADIUS_KM = 6371.0;
+// Haversine formula implementation
+// Earth radius in kilometers
+constexpr double EARTH_RADIUS = 6371.0;
 
-// 角度转弧度
-static double toRadians(double degrees) {
-    return degrees * M_PI / 180.0;
-}
-
-// 实现Haversine距离计算
 double GeoJSONGraphConverter::haversineDistance(double lon1, double lat1, double lon2, double lat2) {
-    double dLat = toRadians(lat2 - lat1);
-    double dLon = toRadians(lon2 - lon1);
-    
-    double a = sin(dLat/2) * sin(dLat/2) +
-               cos(toRadians(lat1)) * cos(toRadians(lat2)) *
-               sin(dLon/2) * sin(dLon/2);
-    
-    double c = 2 * atan2(sqrt(a), sqrt(1-a)); 
-    return EARTH_RADIUS_KM * c; // 距离(公里)
+    double dLat = (lat2 - lat1) * M_PI / 180.0;
+    double dLon = (lon2 - lon1) * M_PI / 180.0;
+    lat1 = lat1 * M_PI / 180.0;
+    lat2 = lat2 * M_PI / 180.0;
+    double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return EARTH_RADIUS * c;
 }
 
-// 生成节点ID (使用坐标的字符串表示)
+// 生成UUID的辅助函数
+#include <random>
+#include <iomanip>
+std::string generateUUID() {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_int_distribution<> dis(0, 15);
+    static std::uniform_int_distribution<> dis2(8, 11);
+    std::stringstream ss;
+    int i;
+    ss << std::hex;
+    for (i = 0; i < 8; i++) ss << dis(gen);
+    ss << "-";
+    for (i = 0; i < 4; i++) ss << dis(gen);
+    ss << "-4";
+    for (i = 0; i < 3; i++) ss << dis(gen);
+    ss << "-" << dis2(gen);
+    for (i = 0; i < 3; i++) ss << dis(gen);
+    ss << "-";
+    for (i = 0; i < 12; i++) ss << dis(gen);
+    return ss.str();
+}
+
 std::string GeoJSONGraphConverter::generateNodeId(double lon, double lat) {
-    // 保留6位小数确保精度
-    char buffer[32];
-    snprintf(buffer, sizeof(buffer), "%.6f,%.6f", lon, lat);
-    return std::string(buffer);
+    std::ostringstream oss;
+    // 容差是1e-6 大概1cm左右
+    oss << std::fixed << std::setprecision(6) << lon << "_" << lat;
+    return oss.str();
 }
 
-// 从GeoJSON创建图
-Graph GeoJSONGraphConverter::fromGeoJSON(const std::string& geojson) {
-    Graph graph;
-    std::unordered_map<std::string, Node*> nodeMap; // 缓存已创建的节点
+int  GeoJSONGraphConverter::fromGeoJSON( Graph & graph, const std::string& geojson) {
 
-    try {
-        // 解析GeoJSON
-        nlohmann::json j = nlohmann::json::parse(geojson);
-
-        // 检查是否为FeatureCollection
-        if (j["type"].get_string() != "FeatureCollection") {
-            throw std::runtime_error("GeoJSON must be a FeatureCollection");
+    json j = json::parse(geojson);
+    if (!j.contains("features")) return 0;
+    // 添加进度条
+    std::cout << "正在转换GeoJSON数据到图结构..." << std::endl;
+    size_t total = j["features"].size();
+    size_t count = 0;
+    for (const auto& feature : j["features"]) {
+        // 进度条显示
+        if (count % 100 == 0 || count == total - 1) {
+            int percent = static_cast<int>(100.0 * count / total);
+            std::cout << "\r解析进度: [" << std::string(percent/2, '=') << std::string(50-percent/2, ' ') << "] " << percent << "%" << std::flush;
         }
-
-        // 遍历所有要素
-        for (const auto& feature : j["features"]) {
-            // 只处理LineString类型的要素
-            if (feature["geometry"]["type"].get_string() == "LineString") {
-                const auto& coordinates = feature["geometry"]["coordinates"];
-
-                // 遍历坐标点对，创建边
-                for (size_t i = 0; i < coordinates.size() - 1; ++i) {
-                    // 获取当前点和下一个点的坐标
-                    double lon1 = coordinates[i][0].get_number();
-                    double lat1 = coordinates[i][1].get_number();
-                    double lon2 = coordinates[i+1][0].get_number();
-                    double lat2 = coordinates[i+1][1].get_number();
-
-                    // 生成节点ID
-                    std::string id1 = generateNodeId(lon1, lat1);
-                    std::string id2 = generateNodeId(lon2, lat2);
-
-                    // 获取或创建节点
-                    Node* node1 = nullptr;
-                    Node* node2 = nullptr;
-
-                    if (nodeMap.find(id1) == nodeMap.end()) {
-                        node1 = &graph.makeNode(Node(id1));
-                        nodeMap[id1] = node1;
-                    } else {
-                        node1 = nodeMap[id1];
-                    }
-
-                    if (nodeMap.find(id2) == nodeMap.end()) {
-                        node2 = &graph.makeNode(Node(id2));
-                        nodeMap[id2] = node2;
-                    } else {
-                        node2 = nodeMap[id2];
-                    }
-
-                    // 计算两点间距离作为边的权重
-                    double distance = haversineDistance(lon1, lat1, lon2, lat2);
-
-                    // 创建双向边(无向图)
-                    graph.makeBiEdge<SimpleEdge>(*node1, *node2, distance);
+        ++count;
+        if (!feature.contains("geometry")) continue;
+        // if (!feature.contains("id")) continue; // 确保每个Feature都有ID
+        // std::string featureId = feature["id"];
+        const auto& geometry = feature["geometry"];
+        if (!geometry.contains("type") || !geometry.contains("coordinates")) continue;
+        std::string type = geometry["type"];
+        if (type == "LineString") {
+            const auto& coords = geometry["coordinates"];
+         
+            for (size_t i = 1; i < coords.size(); ++i) {
+                double lon1 = coords[i-1][0], lat1 = coords[i-1][1];
+                double lon2 = coords[i][0], lat2 = coords[i][1];
+                std::string id1 = generateNodeId(lon1, lat1);
+                std::string id2 = generateNodeId(lon2, lat2);
+                // 查找或创建节点1
+                Node* node1 = graph.findNodeById(id1);
+                if (!node1) {
+                    node1 = &graph.makeNode(Node(id1, lon1, lat1));
+                    // 可在此扩展Node存储经纬度
                 }
+                // 查找或创建节点2
+                Node* node2 = graph.findNodeById(id2);
+                if (!node2) {
+                    node2 = &graph.makeNode(Node(id2, lon2, lat2));
+                    // 可在此扩展Node存储经纬度
+                }
+                //std::cout << "Creating edge from " << node1_1.getId() << " to " << node2_1.getId() << std::endl;
+                // std::cout <<  " Creating edge from " << node1->getId() << " to " << node2->getId() << std::endl;
+
+                double dist = haversineDistance(lon1, lat1, lon2, lat2);
+              
+                graph.makeBiEdge<SimpleEdge>(*node1, *node2, dist);
             }
         }
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Failed to parse GeoJSON: " + std::string(e.what()));
+        // 可扩展支持Point、Polygon等
     }
-
-    return graph;
+    std::cout << std::endl; // 完成后换行
+    return 1;
 }
