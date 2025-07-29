@@ -12,7 +12,7 @@
 
 #include "Node.h"
 #include "Edge.h"
-
+#include "SimpleEdge.h"
 
 /* --------------------------------------------------------------------------------------------- */
 
@@ -83,11 +83,12 @@ public:
     template<class T>
     Graph& operator << (T&& rEdge) {
         // forward as r-value reference
-        makeEdge(std::move(rEdge))
+        makeEdge(std::move(rEdge));
         return *this;
     }
 
     tNodePtrSet& getNodes() { return m_nodes; }
+    tEdgePtrList& getEdges() { return m_edges; }
 
     /**
     * Deletes the given Edge from the graph.
@@ -108,7 +109,7 @@ public:
     * Retrieves a node by the given id. 
     * @return a pointer to the node or NULL if not found. 
     */
-    Node* Graph::findNodeById(const std::string& id);
+    Node* findNodeById(const std::string& id);
 
     /** Retrieves all edges that have rSrc as source node and rDst as destination node. */
     tEdges findEdges(const Node& rSrc, const Node& rDst);
@@ -124,6 +125,8 @@ public:
     * @param rFimename the target file name.
     */
     void saveAsDot(const std::string& rFilename) const;
+    void saveAsJson(const std::string& rFilename) const;
+    void loadFromJson(const std::string& rFilename);
 
     /**
     * The Dijkstra algorithm calculates the shortest path of all nodes to a single root node.
@@ -134,13 +137,24 @@ public:
     */
     tDijkstraMap findDistancesDijkstra(const Node& rSrcNode, const Node* pDstNode, Node** pFoundDst);
 
+
+        /**
+    * The Dijkstra algorithm calculates the shortest path of all nodes to a single root node.
+    * @param rSrcNode is the node to calculate the distance to.
+    * @param pDstNode the algorithm stops, if the path to *pDstNode is found.
+    * @param pFoundDst contains the address of the destination node or is set to NULL, if no path was found.
+    * @return a map of nodes with associated routing information to the source node..
+    */
+    tDijkstraMap findDistancesDijkstraV1(const Node& rSrcNode, const Node* pDstNode, Node** pFoundDst);
+
+
     /**
     * Calculate the shortest path from a source node to a destination node.
     * @param the source node.
     * @param the destination node.
     * @return tPath is a deque of edges and represents the route from rSrc to rDst.
     */
-    tPath findShortestPathDijkstra(const Node& rSrc, const Node& rDst);
+    tPath findShortestPathDijkstra(const Node& rSrc, const Node& rDst, bool useV1=false);
 
 
 protected:

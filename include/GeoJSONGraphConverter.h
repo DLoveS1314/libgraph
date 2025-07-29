@@ -3,12 +3,12 @@
 
 #include <string>
 #include "Graph.h"
-#include "thirdparty/json.hpp"
+#include "json.hpp"
 
 class GeoJSONGraphConverter {
 public:
     // 将GeoJSON字符串转换为Graph对象
-    static Graph fromGeoJSON(const std::string& geojson);
+    static int fromGeoJSON(Graph & graph,const std::string& geojson);
 
 private:
     // 计算两点间的Haversine距离(单位:公里)
